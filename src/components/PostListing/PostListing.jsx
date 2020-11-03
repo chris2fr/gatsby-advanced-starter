@@ -1,10 +1,14 @@
 import React from "react";
 import { Link } from "gatsby";
+//import breadcrumbs from "../../../data/breadcrumbs";
 
 class PostListing extends React.Component {
   getPostList() {
     const postList = [];
+
+    // if (Object.prototype.hasOwnProperty.call(node, "frontmatter"))
     this.props.postEdges.forEach(postEdge => {
+
       postList.push({
         path: postEdge.node.fields.slug,
         tags: postEdge.node.frontmatter.tags,

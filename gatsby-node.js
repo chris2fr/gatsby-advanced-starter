@@ -4,38 +4,78 @@ const path = require("path");
 const _ = require("lodash");
 const moment = require("moment");
 const siteConfig = require("./data/SiteConfig");
+// const breadcrumbs = require("./data/breadcrumbs");
+const slugTitleMap = new Map();
+const slugChildrenSlugsMap = new Map();
+const slugBreadcrumbSlugsMap = new Map();
+const slugBreadcrumbsMap = new Map();
+
+// const slugParentsSlugsSet = new Set();
+
+/*
+exports.onPreBootstrap = ( ) => {
+  const node = {
+    //id: createNodeId("breadcrumps"),
+    //...restOfNodeData
+    subpages: new Map()
+  }
+  console.log(node);
+};
+*/
+
+exports.createSchemaCustomization = ({ actions }) => {
+  const { createTypes } = actions
+  const typeDefs = `
+    type AuthorJson implements Node {
+      joinedAt: Date
+    }
+  `
+  createTypes(typeDefs)
+};
+
+
+
+// let breadcrumbs = new Map();
 
 exports.onCreateNode = ({ node, actions, getNode }) => {
   const { createNodeField } = actions;
-  let slug;
+  let slug = "/";
+  let title = "";
+  let breadcrumb = "";
+
   if (node.internal.type === "MarkdownRemark") {
     const fileNode = getNode(node.parent);
     const parsedFilePath = path.parse(fileNode.relativePath);
+    slug += (parsedFilePath.dir)?parsedFilePath.dir + "/":"";
+    slug += parsedFilePath.name + "/";
     if (
       Object.prototype.hasOwnProperty.call(node, "frontmatter") &&
       Object.prototype.hasOwnProperty.call(node.frontmatter, "title")
     ) {
-      slug = `/${_.kebabCase(node.frontmatter.title)}`;
-    } else if (parsedFilePath.name !== "index" && parsedFilePath.dir !== "") {
-      slug = `/${parsedFilePath.dir}/${parsedFilePath.name}/`;
-    } else if (parsedFilePath.dir === "") {
-      slug = `/${parsedFilePath.name}/`;
+      title = node.frontmatter.title;
     } else {
-      slug = `/${parsedFilePath.dir}/`;
-    }
+      title = parsedFilePath.name.toUpperCase();
+    } 
 
     if (Object.prototype.hasOwnProperty.call(node, "frontmatter")) {
-      if (Object.prototype.hasOwnProperty.call(node.frontmatter, "slug"))
-        slug = `/${_.kebabCase(node.frontmatter.slug)}`;
+      // if (Object.prototype.hasOwnProperty.call(node.frontmatter, "slug"))
+      //  slug = `/${_.kebabCase(node.frontmatter.slug)}`;
       if (Object.prototype.hasOwnProperty.call(node.frontmatter, "date")) {
         const date = moment(node.frontmatter.date, siteConfig.dateFromFormat);
         if (!date.isValid)
           console.warn(`WARNING: Invalid date.`, node.frontmatter);
-
         createNodeField({ node, name: "date", value: date.toISOString() });
       }
     }
+
+    // Set up breadcrumbs
+    slugTitleMap.set(slug,title);
+    createNodeField({ node, name: "title", value: title });
     createNodeField({ node, name: "slug", value: slug });
+    breadcrumb = slug.substring(0,slug.lastIndexOf("/", slug.length - 2)+1)
+    createNodeField({ node, name: "breadcrumb", value: breadcrumb });
+    slugChildrenSlugsMap.set(slug, []);
+    slugBreadcrumbSlugsMap.set(slug, breadcrumb);
   }
 };
 
@@ -53,8 +93,11 @@ exports.createPages = async ({ graphql, actions }) => {
       allMarkdownRemark {
         edges {
           node {
+            id
             fields {
               slug
+              breadcrumb
+              title
             }
             frontmatter {
               title
@@ -121,8 +164,44 @@ exports.createPages = async ({ graphql, actions }) => {
     });
   }
 
+  // Breadcrumbs
+  postsEdges.forEach((edge, index) => {
+    const node = postsEdges[index].node;
+   
+    let breadcrumbSlug = node.fields.slug;
+
+    while (breadcrumbSlug.length > 1 && slugBreadcrumbSlugsMap.has(breadcrumbSlug) && slugBreadcrumbSlugsMap.get(breadcrumbSlug) != breadcrumbSlug ) {
+      breadcrumbSlug = slugBreadcrumbSlugsMap.get(breadcrumbSlug);
+      let breadcrumbs = (slugBreadcrumbsMap.has(node.fields.slug))?slugBreadcrumbsMap.get(node.fields.slug):[];
+      breadcrumbs.unshift({slug: breadcrumbSlug, title: slugTitleMap.has(breadcrumbSlug)?slugTitleMap.get(breadcrumbSlug):breadcrumbSlug.slice(breadcrumbSlug.lastIndexOf("/",breadcrumbSlug.length -2)+1,breadcrumbSlug.length -1)});
+      slugBreadcrumbsMap.set(node.fields.slug,breadcrumbs);
+    } 
+    /*
+    if (node.fields.breadcrumb) {
+      let breadcrumbs = (slugBreadcrumbsMap.has(node.fields.slug))?slugBreadcrumbsMap.get(node.fields.slug):[];
+      breadcrumbs.push({title: slugTitleMap.get(node.fields.breadcrumb), slug: node.fields.breadcrumb});
+      slugBreadcrumbsMap.set(node.fields.breadcrumb,breadcrumbs);
+    }
+    */
+  });
+
+  // Subpages
+  postsEdges.forEach((edge, index) => {
+    const node = postsEdges[index].node;
+    // let children = [];
+    // let newChild = {id: node.id, title: node.fields.title, slug: node.fields.slug};
+    // console.log(["node.fields.breadcrumb",node.fields.breadcrumb]);
+    let children = (slugChildrenSlugsMap.has(node.fields.breadcrumb))?slugChildrenSlugsMap.get(node.fields.breadcrumb):[];
+    children.push({id: node.id, title: node.fields.title, slug: node.fields.slug});
+    slugChildrenSlugsMap.set(node.fields.breadcrumb,children);
+  });
+  
+
+  // console.log(["slugChildrenSlugsMap",slugChildrenSlugsMap]);
+
   // Post page creating
   postsEdges.forEach((edge, index) => {
+
     // Generate a list of tags
     if (edge.node.frontmatter.tags) {
       edge.node.frontmatter.tags.forEach(tag => {
@@ -135,11 +214,16 @@ exports.createPages = async ({ graphql, actions }) => {
       categorySet.add(edge.node.frontmatter.category);
     }
 
+    // Generate a map of sub pages
+
+
+
     // Create post pages
     const nextID = index + 1 < postsEdges.length ? index + 1 : 0;
     const prevID = index - 1 >= 0 ? index - 1 : postsEdges.length - 1;
     const nextEdge = postsEdges[nextID];
     const prevEdge = postsEdges[prevID];
+    // let subpages = slugChildrenSlugsMap.get(edge.node.fields.slug);
 
     createPage({
       path: edge.node.fields.slug,
@@ -149,7 +233,11 @@ exports.createPages = async ({ graphql, actions }) => {
         nexttitle: nextEdge.node.frontmatter.title,
         nextslug: nextEdge.node.fields.slug,
         prevtitle: prevEdge.node.frontmatter.title,
-        prevslug: prevEdge.node.fields.slug
+        prevslug: prevEdge.node.fields.slug,
+        subpages: slugChildrenSlugsMap.get(edge.node.fields.slug),
+        breadcrumbs: slugBreadcrumbsMap.get(edge.node.fields.slug),
+        breadcrumbSlug: edge.node.fields.breadcrumb,
+        title: edge.node.fields.title
       }
     });
   });

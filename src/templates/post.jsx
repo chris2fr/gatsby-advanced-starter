@@ -1,6 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet";
-import { graphql } from "gatsby";
+import { graphql, Link } from "gatsby";
 import Layout from "../layout";
 import UserInfo from "../components/UserInfo/UserInfo";
 import Disqus from "../components/Disqus/Disqus";
@@ -11,12 +11,14 @@ import Footer from "../components/Footer/Footer";
 import config from "../../data/SiteConfig";
 import "./b16-tomorrow-dark.css";
 import "./post.css";
+import { gt } from "lodash";
 
 export default class PostTemplate extends React.Component {
   render() {
     const { data, pageContext } = this.props;
     const { slug } = pageContext;
     const postNode = data.markdownRemark;
+    const sitePage = data.sitePage;
     const post = postNode.frontmatter;
     if (!post.id) {
       post.id = slug;
@@ -31,7 +33,33 @@ export default class PostTemplate extends React.Component {
           <SEO postPath={slug} postNode={postNode} postSEO />
           <div>
             <h1>{post.title}</h1>
+            <div>
+            <p>
+            {/* Breadcrumbs */
+               sitePage.context.breadcrumbs &&
+               sitePage.context.breadcrumbs.map(breadcrumb => (
+                  <Link to={breadcrumb.slug} key={breadcrumb.title}>
+                  </Link>
+                ))
+            }
+            </p>
+            </div>
             <div dangerouslySetInnerHTML={{ __html: postNode.html }} />
+            <div>
+              <hr/>
+              <h2>{post.title} > </h2>
+              <ul>
+               {/* Subpages */
+               sitePage.context.subpages &&
+               sitePage.context.subpages.map(subpage => (
+                  <Link to={subpage.slug} key={subpage.title}>
+                    <li key={subpage.slug}>{subpage.title}</li>
+                  </Link>
+                ))
+            }
+            </ul>
+            <hr/>
+            </div>
             <div className="post-meta">
               <PostTags tags={post.tags} />
               <SocialLinks postPath={slug} postNode={postNode} />
@@ -63,6 +91,20 @@ export const pageQuery = graphql`
       fields {
         slug
         date
+      }
+    }
+    sitePage(context: {slug: {eq: $slug}}) {
+      context {
+        slug
+        subpages {
+          slug
+          title
+        }
+        breadcrumbs {
+          slug
+          title
+        }
+        breadcrumbSlug
       }
     }
   }
