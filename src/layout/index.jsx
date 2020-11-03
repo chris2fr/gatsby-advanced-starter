@@ -7,7 +7,11 @@ import { graphql, Link } from "gatsby";
 
 export default class MainLayout extends React.Component {
   render() {
-    const {children} = this.props;
+    const {children, slug, sitePage} = this.props;
+    const sitePageContext = sitePage.context;
+    const breadcrumbs = sitePageContext.breadcrumbs;
+    const subpages = sitePageContext.subpages;
+    const topMenu = [{slug: "/services/",title:"Services"},{slug: "/solutions/",title:"Solutions"},{slug: "/company/",title:"Company"},{slug: "/company/contact/",title:"Hire"}];
 
     return (
       <div className="layout-container">
@@ -17,23 +21,47 @@ export default class MainLayout extends React.Component {
         </Helmet>
 
         <div className="container"><div className="row"><div className="three columns">
+          {/*}
         <Link to="/" key="home">
                     <h2 key="home">MANN.FR</h2>
         </Link>
         <ul>
-                  <Link to="/services/" key="home">
-                    <li key="home">Services</li>
+        {topMenu.map( topMenuItem => (
+          
+          <li key={topMenuItem.slug}><Link to={topMenuItem.slug} key={topMenuItem.slug}>{topMenuItem.title}</Link> 
+          {(breadcrumbs) && (breadcrumbs.length > 2) && (breadcrumbs[1].slug == topMenuItem.slug) &&
+                <ul>
+                 <li><Link to={breadcrumbs[2].slug}>{breadcrumbs[2].title}</Link>
+                 {(breadcrumbs.length > 3) && 
+                  <ul><li><Link to={breadcrumbs[3].slug}>{breadcrumbs[3].title}</Link></li></ul>
+                }</li>
+             </ul>
+            }
+          </li>
+
+        ))}
+        </ul>
+        {*/}
+        <ol>
+                      {/* Breadcrumbs */
+               breadcrumbs &&
+               breadcrumbs.map(breadcrumb => (
+                <li>
+                  <Link to={breadcrumb.slug} key={breadcrumb.title}>
+                    {breadcrumb.title || "Home" }
                   </Link>
-                  <Link to="/solutions/" key="home">
-                    <li key="home">Solutions</li>
-                  </Link>
-                  <Link to="/company/" key="home">
-                    <li key="home">Company</li>
-                  </Link>
-                  <Link to="/company/contact/" key="Hire">
-                    <li key="home">Hire</li>
-                  </Link>
-            </ul>
+                  </li>
+                ))
+            }
+            </ol>
+        {sitePageContext.title}
+        <ul>
+              {sitePageContext.subpages && 
+                sitePageContext.subpages.map(subMenuItem => (
+                  <li><Link to={subMenuItem.slug}>{subMenuItem.title}</Link></li>
+                ))
+              }
+      </ul>
             </div>
             <div className="nine columns">
         {children}
@@ -42,20 +70,3 @@ export default class MainLayout extends React.Component {
     );
   }
 }
-
-/*
-export const layoutQuery = graphql`
-  query layoutQuery {
-    allSitePage(filter: {context: {breadcrumbSlug: {eq: "/"}}}) {
-      edges {
-        node {
-          context {
-            slug
-            title
-          }
-        }
-      }
-    }
-  }
-`
-*/

@@ -11,7 +11,7 @@ import Footer from "../components/Footer/Footer";
 import config from "../../data/SiteConfig";
 import "./b16-tomorrow-dark.css";
 import "./post.css";
-import { gt } from "lodash";
+// import { gt } from "lodash";
 
 export default class PostTemplate extends React.Component {
   render() {
@@ -25,41 +25,31 @@ export default class PostTemplate extends React.Component {
     }
 
     return (
-      <Layout>
+      <Layout slug={slug} sitePage={sitePage}>
         <div>
           <Helmet>
             <title>{`${post.title} | ${config.siteTitle}`}</title>
           </Helmet>
           <SEO postPath={slug} postNode={postNode} postSEO />
-          <div>
-            <h1>{post.title}</h1>
-            <div>
-            <p>
+          <div className="container">
+          <nav className="navbar">
+            
+              <ul className="navbar-list">
             {/* Breadcrumbs */
                sitePage.context.breadcrumbs &&
                sitePage.context.breadcrumbs.map(breadcrumb => (
-                  <Link to={breadcrumb.slug} key={breadcrumb.title}>
+                <li className="navbar-item">
+                  <Link to={breadcrumb.slug} key={breadcrumb.title} className="navbar-link">
+                    {breadcrumb.title || "Home" }
                   </Link>
+                  </li>
                 ))
             }
-            </p>
+<li className="navbar-item"><span className="navbar-link">{post.title}</span></li>
+            </ul>
+            </nav>
             </div>
             <div dangerouslySetInnerHTML={{ __html: postNode.html }} />
-            <div>
-              <hr/>
-              <h2>{post.title} > </h2>
-              <ul>
-               {/* Subpages */
-               sitePage.context.subpages &&
-               sitePage.context.subpages.map(subpage => (
-                  <Link to={subpage.slug} key={subpage.title}>
-                    <li key={subpage.slug}>{subpage.title}</li>
-                  </Link>
-                ))
-            }
-            </ul>
-            <hr/>
-            </div>
             <div className="post-meta">
               <PostTags tags={post.tags} />
               <SocialLinks postPath={slug} postNode={postNode} />
@@ -67,7 +57,6 @@ export default class PostTemplate extends React.Component {
             <UserInfo config={config} />
             <Disqus postNode={postNode} />
             <Footer config={config} />
-          </div>
         </div>
       </Layout>
     );
@@ -95,6 +84,7 @@ export const pageQuery = graphql`
     }
     sitePage(context: {slug: {eq: $slug}}) {
       context {
+        title
         slug
         subpages {
           slug

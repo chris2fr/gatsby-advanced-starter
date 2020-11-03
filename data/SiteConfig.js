@@ -13,7 +13,7 @@ const config = {
   disqusShortname: "", // Disqus shortname.
   dateFromFormat: "YYYY-MM-DD", // Date format used in the frontmatter.
   dateFormat: "YYYY-MM-DD", // Date format for display.
-  postsPerPage: 4, // Amount of posts displayed per listing page.
+  postsPerPage: 0, // Amount of posts displayed per listing page.
   userName: "Chris Mann", // Username to display in the author segment.
   userEmail: "chris@mann.fr", // Email used for RSS feed's author segment
   userTwitter: "chris2fr", // Optionally renders "Follow Me" in the UserInfo segment.

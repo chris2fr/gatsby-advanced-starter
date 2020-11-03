@@ -53,6 +53,9 @@ exports.onCreateNode = ({ node, actions, getNode }) => {
       Object.prototype.hasOwnProperty.call(node.frontmatter, "title")
     ) {
       title = node.frontmatter.title;
+    } else if ( Object.prototype.hasOwnProperty.call(node, "headings") &&
+                node.headings.length > 0) {
+      title = node.headings[0].value;
     } else {
       title = parsedFilePath.name.toUpperCase();
     } 
@@ -121,6 +124,28 @@ exports.createPages = async ({ graphql, actions }) => {
 
   const postsEdges = markdownQueryResult.data.allMarkdownRemark.edges;
 
+  // Breadcrumbs
+  postsEdges.forEach((edge, index) => {
+    const node = postsEdges[index].node;
+   
+    let breadcrumbSlug = node.fields.slug;
+
+    while (breadcrumbSlug.length > 1 && slugBreadcrumbSlugsMap.has(breadcrumbSlug) && slugBreadcrumbSlugsMap.get(breadcrumbSlug) != breadcrumbSlug ) {
+      breadcrumbSlug = slugBreadcrumbSlugsMap.get(breadcrumbSlug);
+      let breadcrumbs = (slugBreadcrumbsMap.has(node.fields.slug))?slugBreadcrumbsMap.get(node.fields.slug):[];
+      breadcrumbs.unshift({slug: breadcrumbSlug, title: slugTitleMap.has(breadcrumbSlug)?slugTitleMap.get(breadcrumbSlug):breadcrumbSlug.slice(breadcrumbSlug.lastIndexOf("/",breadcrumbSlug.length -2)+1,breadcrumbSlug.length -1)});
+      slugBreadcrumbsMap.set(node.fields.slug,breadcrumbs);
+    } 
+  });
+
+  // Subpages
+  postsEdges.forEach((edge, index) => {
+    const node = postsEdges[index].node;
+    let children = (slugChildrenSlugsMap.has(node.fields.breadcrumb))?slugChildrenSlugsMap.get(node.fields.breadcrumb):[];
+    children.push({id: node.id, title: node.fields.title, slug: node.fields.slug});
+    slugChildrenSlugsMap.set(node.fields.breadcrumb,children);
+  });
+
   // Sort posts
   postsEdges.sort((postA, postB) => {
     const dateA = moment(
@@ -160,44 +185,14 @@ exports.createPages = async ({ graphql, actions }) => {
     // Load the landing page instead
     createPage({
       path: `/`,
-      component: landingPage
+      component: landingPage,
+      context: {
+        slug: "/",
+        subpages: slugChildrenSlugsMap.get("/"),
+        title: "Home"
+      }
     });
   }
-
-  // Breadcrumbs
-  postsEdges.forEach((edge, index) => {
-    const node = postsEdges[index].node;
-   
-    let breadcrumbSlug = node.fields.slug;
-
-    while (breadcrumbSlug.length > 1 && slugBreadcrumbSlugsMap.has(breadcrumbSlug) && slugBreadcrumbSlugsMap.get(breadcrumbSlug) != breadcrumbSlug ) {
-      breadcrumbSlug = slugBreadcrumbSlugsMap.get(breadcrumbSlug);
-      let breadcrumbs = (slugBreadcrumbsMap.has(node.fields.slug))?slugBreadcrumbsMap.get(node.fields.slug):[];
-      breadcrumbs.unshift({slug: breadcrumbSlug, title: slugTitleMap.has(breadcrumbSlug)?slugTitleMap.get(breadcrumbSlug):breadcrumbSlug.slice(breadcrumbSlug.lastIndexOf("/",breadcrumbSlug.length -2)+1,breadcrumbSlug.length -1)});
-      slugBreadcrumbsMap.set(node.fields.slug,breadcrumbs);
-    } 
-    /*
-    if (node.fields.breadcrumb) {
-      let breadcrumbs = (slugBreadcrumbsMap.has(node.fields.slug))?slugBreadcrumbsMap.get(node.fields.slug):[];
-      breadcrumbs.push({title: slugTitleMap.get(node.fields.breadcrumb), slug: node.fields.breadcrumb});
-      slugBreadcrumbsMap.set(node.fields.breadcrumb,breadcrumbs);
-    }
-    */
-  });
-
-  // Subpages
-  postsEdges.forEach((edge, index) => {
-    const node = postsEdges[index].node;
-    // let children = [];
-    // let newChild = {id: node.id, title: node.fields.title, slug: node.fields.slug};
-    // console.log(["node.fields.breadcrumb",node.fields.breadcrumb]);
-    let children = (slugChildrenSlugsMap.has(node.fields.breadcrumb))?slugChildrenSlugsMap.get(node.fields.breadcrumb):[];
-    children.push({id: node.id, title: node.fields.title, slug: node.fields.slug});
-    slugChildrenSlugsMap.set(node.fields.breadcrumb,children);
-  });
-  
-
-  // console.log(["slugChildrenSlugsMap",slugChildrenSlugsMap]);
 
   // Post page creating
   postsEdges.forEach((edge, index) => {
@@ -224,6 +219,7 @@ exports.createPages = async ({ graphql, actions }) => {
     const nextEdge = postsEdges[nextID];
     const prevEdge = postsEdges[prevID];
     // let subpages = slugChildrenSlugsMap.get(edge.node.fields.slug);
+    // console.log([edge.node.fields.slug,slugBreadcrumbsMap.get(edge.node.fields.slug)]);
 
     createPage({
       path: edge.node.fields.slug,

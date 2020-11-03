@@ -9,14 +9,15 @@ import config from "../../data/SiteConfig";
 class Landing extends React.Component {
   render() {
     const postEdges = this.props.data.allMarkdownRemark.edges;
+    const sitePage = this.props.data.sitePage;
+    const slug = sitePage.context.slug;
     return (
-      <Layout>
-        <div className="landing-container">
-          <div className="posts-container">
+      <Layout  slug={slug} sitePage={sitePage}>
+          <div className="header">
             <Helmet title={config.siteTitle} />
             <SEO />
-            <PostListing postEdges={postEdges} />
-          </div>
+            <h1 className="title">MANN.FR</h1>
+            <h2 className="subtitle">Well-Being in this Digital Era</h2>
         </div>
       </Layout>
     );
@@ -44,6 +45,20 @@ export const pageQuery = graphql`
             date
           }
         }
+      }
+    }sitePage(context: {slug: {eq: "/"}}) {
+      context {
+        title
+        slug
+        subpages {
+          slug
+          title
+        }
+        breadcrumbs {
+          slug
+          title
+        }
+        breadcrumbSlug
       }
     }
   }
